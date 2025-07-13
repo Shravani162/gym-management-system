@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Member - Admin</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .form-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: black;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #084298;
+    }
+
+    .success, .error {
+      text-align: center;
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>Add New Member</h2>
+    <input type="text" id="name" placeholder="Full Name" required />
+    <input type="email" id="email" placeholder="Email Address" required />
+    <input type="number" id="age" placeholder="Age" required />
+    <input type="text" id="phone" placeholder="Contact Number" required />
+    <input type="date" id="joinDate" required />
+
+    <select id="package">
+      <option value="">Select Package</option>
+      <option value="Monthly">Monthly</option>
+      <option value="Quarterly">Quarterly</option>
+      <option value="Yearly">Yearly</option>
+    </select>
+
+    <select id="status">
+      <option value="">Select Status</option>
+      <option value="Active">Active</option>
+      <option value="Inactive">Inactive</option>
+    </select>
+
+    <input type="password" id="password" placeholder="Temporary Password" required />
+
+    <button id="addMemberBtn">Add Member</button>
+
+    <p id="feedbackMsg"></p>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDWnlGPxDGK6tAoo_fFAGd0kTIdKPxiKxc",
+      authDomain: "gymmanagementsystem-2c189.firebaseapp.com",
+      projectId: "gymmanagementsystem-2c189",
+      storageBucket: "gymmanagementsystem-2c189.appspot.com",
+      messagingSenderId: "135832156870",
+      appId: "1:135832156870:web:ad97adf46c29fd1946b5c7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const btn = document.getElementById('addMemberBtn');
+    const feedback = document.getElementById('feedbackMsg');
+
+    btn.addEventListener('click', async () => {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const age = document.getElementById('age').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const joinDate = document.getElementById('joinDate').value;
+      const packageType = document.getElementById('package').value;
+      const status = document.getElementById('status').value;
+      const password = document.getElementById('password').value.trim();
+
+      if (!name || !email || !age || !phone || !joinDate || !packageType || !status || !password) {
+        feedback.textContent = "All fields are required.";
+        feedback.className = "error";
+        return;
+      }
+
+      try {
+        // 1. Create Auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. Save details to Firestore
+        await addDoc(collection(db, "members"), {
+          uid: user.uid,
+          name,
+          email,
+          age: Number(age),
+          phone,
+          joinDate,
+          packageType,
+          status,
+          createdAt: serverTimestamp()
+        });
+
+        feedback.textContent = "Member added and account created successfully!";
+        feedback.className = "success";
+
+        // Reset form
+        document.getElementById('name').value = "";
+        document.getElementById('email').value = "";
+        document.getElementById('age').value = "";
+        document.getElementById('phone').value = "";
+        document.getElementById('joinDate').value = "";
+        document.getElementById('package').value = "";
+        document.getElementById('status').value = "";
+        document.getElementById('password').value = "";
+
+      } catch (error) {
+        feedback.textContent = "Error: " + error.message;
+        feedback.className = "error";
+      }
+    });
+  </script>
+</body>
+</html>

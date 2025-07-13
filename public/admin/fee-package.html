@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Assign Fee Package</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f0f0;
+      padding: 40px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        color: #333; /* 🟢 makes text visible */
+    }
+
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    select, button {
+      padding: 6px 10px;
+      border-radius: 5px;
+      font-size: 0.95rem;
+    }
+
+    button {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #084298;
+    }
+
+    .message {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Assign Fee Packages to Members</h2>
+
+  <div class="message" id="feedbackMsg"></div>
+
+  <table id="packageTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Current Package</th>
+        <th>New Package</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Filled by JavaScript -->
+    </tbody>
+  </table>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection,
+      getDocs,
+      updateDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const tableBody = document.querySelector("#packageTable tbody");
+    const feedback = document.getElementById("feedbackMsg");
+
+    async function loadMembers() {
+      try {
+        const snapshot = await getDocs(collection(db, "members"));
+        tableBody.innerHTML = "";
+
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${data.name}</td>
+            <td>${data.email}</td>
+            <td>${data.packageType || "Not Assigned"}</td>
+            <td>
+              <select id="pkg-${docSnap.id}">
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </td>
+            <td><button onclick="assignPackage('${docSnap.id}')">Assign</button></td>
+          `;
+
+          tableBody.appendChild(row);
+        });
+      } catch (error) {
+        feedback.textContent = "Failed to load members.";
+        feedback.className = "error message";
+      }
+    }
+
+    window.assignPackage = async (id) => {
+      const select = document.getElementById(`pkg-${id}`);
+      const packageType = select.value;
+
+      try {
+        await updateDoc(doc(db, "members", id), {
+          packageType: packageType
+        });
+
+        feedback.textContent = "Package assigned successfully.";
+        feedback.className = "success message";
+        loadMembers();
+      } catch (error) {
+        feedback.textContent = "Error assigning package: " + error.message;
+        feedback.className = "error message";
+      }
+    };
+
+    loadMembers();
+  </script>
+
+</body>
+</html>

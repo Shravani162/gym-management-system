@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diet Plan - Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9f9f9;
+      padding: 40px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .form-section {
+      max-width: 700px;
+      background: white;
+      margin: 0 auto 40px;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #084298;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        color: #333; /* 🟢 makes text visible */
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .action-btn {
+      padding: 4px 8px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .edit-btn {
+      background-color: #28a745;
+    }
+
+    .delete-btn {
+      background-color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Manage Diet Plans</h2>
+
+  <div class="form-section">
+    <select id="memberSelect" required>
+      <option value="">Select Member</option>
+    </select>
+    <select id="mealTime" required>
+      <option value="">Meal Time</option>
+      <option value="Breakfast">Breakfast</option>
+      <option value="Lunch">Lunch</option>
+      <option value="Dinner">Dinner</option>
+      <option value="Snacks">Snacks</option>
+    </select>
+    <textarea id="foods" placeholder="Foods (comma-separated)" required></textarea>
+    <input type="number" id="calories" placeholder="Calories (optional)" />
+    <textarea id="notes" placeholder="Notes (optional)"></textarea>
+    <button id="addPlanBtn">Add Diet Plan</button>
+    <p id="msg"></p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Member</th>
+        <th>Meal</th>
+        <th>Foods</th>
+        <th>Calories</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="plansTable"></tbody>
+  </table>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection, addDoc, getDocs, deleteDoc, updateDoc, doc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const memberSelect = document.getElementById('memberSelect');
+    const mealTime = document.getElementById('mealTime');
+    const foods = document.getElementById('foods');
+    const calories = document.getElementById('calories');
+    const notes = document.getElementById('notes');
+    const addPlanBtn = document.getElementById('addPlanBtn');
+    const plansTable = document.getElementById('plansTable');
+    const msg = document.getElementById('msg');
+
+    // Load members into dropdown
+    async function loadMembers() {
+      const membersSnap = await getDocs(collection(db, "members"));
+      membersSnap.forEach(docSnap => {
+        const member = docSnap.data();
+        const option = document.createElement("option");
+        option.value = member.name;
+        option.textContent = member.name + " (" + member.email + ")";
+        memberSelect.appendChild(option);
+      });
+    }
+
+    // Load diet plans
+    async function loadPlans() {
+      plansTable.innerHTML = '';
+      const plansSnap = await getDocs(collection(db, "dietPlans"));
+      plansSnap.forEach(docSnap => {
+        const plan = docSnap.data();
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${plan.member}</td>
+          <td>${plan.meal}</td>
+          <td>${plan.foods}</td>
+          <td>${plan.calories || '-'}</td>
+          <td>${plan.notes || '-'}</td>
+          <td>
+            <button class="action-btn delete-btn" onclick="deletePlan('${docSnap.id}')">Delete</button>
+          </td>
+        `;
+        plansTable.appendChild(row);
+      });
+    }
+
+    addPlanBtn.addEventListener('click', async () => {
+      const member = memberSelect.value;
+      const meal = mealTime.value;
+      const foodItems = foods.value.trim();
+      const cal = calories.value.trim();
+      const note = notes.value.trim();
+
+      if (!member || !meal || !foodItems) {
+        msg.textContent = "Please fill all required fields.";
+        msg.style.color = "red";
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "dietPlans"), {
+          member,
+          meal,
+          foods: foodItems,
+          calories: cal ? Number(cal) : null,
+          notes: note || ""
+        });
+
+        msg.textContent = "Diet plan added!";
+        msg.style.color = "green";
+
+        foods.value = calories.value = notes.value = "";
+        memberSelect.value = mealTime.value = "";
+
+        loadPlans();
+      } catch (error) {
+        msg.textContent = "Error: " + error.message;
+        msg.style.color = "red";
+      }
+    });
+
+    window.deletePlan = async (id) => {
+      if (confirm("Delete this plan?")) {
+        try {
+          await deleteDoc(doc(db, "dietPlans", id));
+          loadPlans();
+        } catch (error) {
+          alert("Error deleting: " + error.message);
+        }
+      }
+    };
+
+    loadMembers();
+    loadPlans();
+  </script>
+</body>
+</html>

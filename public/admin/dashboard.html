@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard - FitLife Gym</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      min-height: 100vh;
+      background: url('../assets/bg.jpg') no-repeat center center/cover;
+      position: relative;
+    }
+
+    /* Dark overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: -1;
+    }
+
+    .sidebar {
+      width: 250px;
+      background-color: #007bff;
+      color: white;
+      height: 100vh;
+      padding-top: 30px;
+      position: fixed;
+    }
+
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.5rem;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 14px 25px;
+      color: white;
+      text-decoration: none;
+      font-size: 1rem;
+      border-left: 4px solid transparent;
+      transition: 0.3s ease;
+    }
+
+    .sidebar a:hover, .sidebar a.active {
+      background-color: #0056b3;
+      border-left: 4px solid #fff;
+    }
+
+    .sidebar .logout-btn {
+      margin: 30px 25px;
+      background-color: #dc3545;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .main-content {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      padding: 60px 40px;
+      color: white;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 30px;
+      margin-top: 30px;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      color: #333;
+      padding: 25px 20px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+      text-align: center;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    .dashboard-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+    }
+
+    .dashboard-card h3 {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    .dashboard-card p {
+      font-size: 0.95rem;
+      color: #555;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>FitLife Gym</h2>
+    <a class="active" href="#">📊 Dashboard</a>
+    <a href="add-member.html">➕ Add Member</a>
+    <a href="update-member.html">📝 Update/Delete Member</a>
+    <a href="create-bill.html">💳 Create Bill</a>
+    <a href="fee-package.html">💰 Fee Package</a>
+    <a href="notifications.html">🔔 Notifications</a>
+    <a href="report.html">📊 Export Reports</a>
+    <a href="supplements.html">🛒 Supplement Store</a>
+    <a href="diet-plan.html">🥗 Diet Plans</a>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h1 id="welcomeMsg">Welcome ,Admin</h1>
+    <div class="dashboard-grid">
+      <div class="dashboard-card" onclick="location.href='add-member.html'">
+        <h3>Add Member</h3>
+        <p>Register new gym members</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='update-member.html'">
+        <h3>Update/Delete Member</h3>
+        <p>Modify or remove member details</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='create-bill.html'">
+        <h3>Create Bill</h3>
+        <p>Generate billing records</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='fee-package.html'">
+        <h3>Assign Fee Package</h3>
+        <p>Manage membership fee plans</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='notifications.html'">
+        <h3>Send Notifications</h3>
+        <p>Alert members about fees and updates</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='report.html'">
+        <h3>Export Reports</h3>
+        <p>Download gym data in CSV/PDF</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='supplements.html'">
+        <h3>Supplement Store</h3>
+        <p>Manage store products and prices</p>
+      </div>
+      <div class="dashboard-card" onclick="location.href='diet-plan.html'">
+        <h3>Diet Plans</h3>
+        <p>Assign and manage diet plans</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+  import { auth, db } from '../js/firebase.js';
+  import { signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  const welcomeMsg = document.getElementById('welcomeMsg');
+
+  // Show user's name
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      const userRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(userRef);
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        welcomeMsg.textContent = `Welcome, ${userData.name}`;
+      } else {
+        welcomeMsg.textContent = "Welcome, Admin";
+      }
+    } else {
+      window.location.href = "../login.html"; // redirect if not logged in
+    }
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      await signOut(auth);
+      alert("Logged out successfully.");
+      window.location.href = "../login.html";
+    } catch (error) {
+      alert("Logout failed: " + error.message);
+    }
+  });
+</script>
+
+
+</body>
+</html>

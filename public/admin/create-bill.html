@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Bill - Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .bill-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #084298;
+    }
+
+    .message {
+      text-align: center;
+      font-size: 0.95rem;
+      margin-top: 10px;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bill-container">
+    <h2>Create New Bill</h2>
+
+    <select id="memberSelect" required>
+      <option value="">Select Member</option>
+    </select>
+
+    <input type="number" id="amount" placeholder="Amount (INR)" required />
+    <input type="date" id="billingDate" required />
+    <input type="date" id="dueDate" required />
+    <textarea id="description" placeholder="Description (optional)"></textarea>
+
+    <button id="createBillBtn">Create Bill</button>
+
+    <p id="feedbackMsg" class="message"></p>
+  </div>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection,
+      getDocs,
+      addDoc,
+      doc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const memberSelect = document.getElementById('memberSelect');
+    const feedback = document.getElementById('feedbackMsg');
+    const createBillBtn = document.getElementById('createBillBtn');
+
+    async function loadMembers() {
+      try {
+        const membersSnapshot = await getDocs(collection(db, "members"));
+        membersSnapshot.forEach(docSnap => {
+          const member = docSnap.data();
+          const option = document.createElement("option");
+          option.value = docSnap.id; // Store the member ID
+          option.textContent = `${member.name} (${member.email})`;
+          memberSelect.appendChild(option);
+        });
+      } catch (error) {
+        feedback.textContent = "Failed to load members.";
+        feedback.className = "error message";
+      }
+    }
+
+    createBillBtn.addEventListener('click', async () => {
+      const memberId = memberSelect.value;
+      const amount = document.getElementById('amount').value.trim();
+      const billingDate = document.getElementById('billingDate').value;
+      const dueDate = document.getElementById('dueDate').value;
+      const description = document.getElementById('description').value.trim();
+
+      if (!memberId || !amount || !billingDate || !dueDate) {
+        feedback.textContent = "Please fill all required fields.";
+        feedback.className = "error message";
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "bills"), {
+          memberId,
+          amount: Number(amount),
+          billingDate,
+          dueDate,
+          description,
+          createdAt: serverTimestamp()
+        });
+
+        feedback.textContent = "Bill created successfully!";
+        feedback.className = "success message";
+
+        // Reset form
+        document.getElementById('amount').value = "";
+        document.getElementById('billingDate').value = "";
+        document.getElementById('dueDate').value = "";
+        document.getElementById('description').value = "";
+        memberSelect.value = "";
+      } catch (error) {
+        feedback.textContent = "Error creating bill: " + error.message;
+        feedback.className = "error message";
+      }
+    });
+
+    loadMembers();
+  </script>
+</body>
+</html>

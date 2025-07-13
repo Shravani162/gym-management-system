@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reports - Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #exportBtn {
+      display: block;
+      margin: 0 auto 20px;
+      padding: 10px 20px;
+      background: #0d6efd;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #exportBtn:hover {
+      background-color: #084298;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        color: #333; /* 🟢 makes text visible */
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Billing Reports</h2>
+  <button id="exportBtn">Export CSV</button>
+
+  <table id="reportTable">
+    <thead>
+      <tr>
+        <th>Member ID</th>
+        <th>Amount</th>
+        <th>Billing Date</th>
+        <th>Due Date</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows will be inserted here -->
+    </tbody>
+  </table>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const tableBody = document.querySelector('#reportTable tbody');
+    const exportBtn = document.getElementById('exportBtn');
+
+    let reportData = [];
+
+    async function loadBills() {
+      const snapshot = await getDocs(collection(db, "bills"));
+      tableBody.innerHTML = "";
+
+      snapshot.forEach(doc => {
+        const bill = doc.data();
+        reportData.push(bill);
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${bill.memberId}</td>
+          <td>${bill.amount}</td>
+          <td>${bill.billingDate}</td>
+          <td>${bill.dueDate}</td>
+          <td>${bill.description || "-"}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function exportToCSV(data) {
+      const csvRows = [];
+      const headers = ['Member ID', 'Amount', 'Billing Date', 'Due Date', 'Description'];
+      csvRows.push(headers.join(','));
+
+      data.forEach(item => {
+        const row = [
+          item.memberId,
+          item.amount,
+          item.billingDate,
+          item.dueDate,
+          `"${item.description || ''}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "billing_report.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    exportBtn.addEventListener('click', () => {
+      if (reportData.length > 0) {
+        exportToCSV(reportData);
+      } else {
+        alert("No data to export.");
+      }
+    });
+
+    loadBills();
+  </script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Member Dashboard</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #e9ecef;
+      padding: 30px;
+      color: #222;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: 600;
+    }
+
+    .section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .section h3 {
+      margin-bottom: 15px;
+      color: #0d6efd;
+    }
+
+    .logout-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 5px;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .highlight {
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+
+    .supp-card {
+  width: 180px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+  text-align: center;
+}
+
+.supp-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.supp-card h4 {
+  margin: 10px 0 5px;
+  font-size: 1rem;
+}
+
+.supp-card p {
+  margin: 2px 0;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+  </style>
+</head>
+<body>
+
+  <button class="logout-btn" id="logoutBtn">Logout</button>
+  <h2 id="welcomeMsg">Welcome, Member</h2>
+
+  <div class="section">
+    <h3>Your Package</h3>
+    <p id="memberPackage">Loading...</p>
+  </div>
+
+  <div class="section">
+    <h3>📢 Notifications</h3>
+    <div id="notifications">
+      <p>Loading notifications...</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🍽 Full Diet Plan</h3>
+    <ul id="dietList">Loading...</ul>
+  </div>
+
+  <div class="section">
+  <h3>🛒 Supplement Store</h3>
+  <div id="supplementList" style="display: flex; flex-wrap: wrap; gap: 20px;"></div>
+</div>
+
+
+  <div class="section">
+    <h3>💳 Your Bills</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Amount</th>
+          <th>Billing Date</th>
+          <th>Due Date</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody id="billTable">
+        <tr><td colspan="4">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { auth, db } from '../js/firebase.js';
+    import {
+      onAuthStateChanged,
+      signOut
+      
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      collection, query, where, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+loadSupplements();
+
+    const welcomeMsg = document.getElementById('welcomeMsg');
+    const memberPackage = document.getElementById('memberPackage');
+    const dietList = document.getElementById('dietList');
+    const billTable = document.getElementById('billTable');
+    const notificationsDiv = document.getElementById('notifications');
+
+    let currentUserEmail = null;
+    let currentUserName = null;
+    let currentUserId = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "../login.html";
+        return;
+      }
+
+      currentUserEmail = user.email;
+
+      // Get member data from Firestore
+      const q = query(collection(db, "members"), where("email", "==", currentUserEmail));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        alert("Access denied. Only members can access this page.");
+        window.location.href = "../login.html";
+        return;
+      }
+
+      const data = snapshot.docs[0].data();
+      currentUserName = data.name;
+      currentUserId = snapshot.docs[0].id;
+      welcomeMsg.textContent = `Welcome, ${data.name}`;
+
+      loadMemberInfo();
+      loadDietPlans();
+      loadBills();
+      loadNotifications();
+    });
+
+    async function loadMemberInfo() {
+      const q = query(collection(db, "members"), where("email", "==", currentUserEmail));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        memberPackage.textContent = `${data.packageType} (${data.status})`;
+      } else {
+        memberPackage.textContent = "Not assigned.";
+      }
+    }
+
+    async function loadDietPlans() {
+      const q = query(collection(db, "dietPlans"), where("member", "==", currentUserName));
+      const snapshot = await getDocs(q);
+      dietList.innerHTML = "";
+
+      if (snapshot.empty) {
+        dietList.innerHTML = "<li>No diet plans assigned.</li>";
+        return;
+      }
+
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const item = document.createElement('li');
+        item.textContent = `${d.meal}: ${d.foods} (${d.calories || '-'} cal)`;
+        dietList.appendChild(item);
+      });
+    }
+
+    async function loadBills() {
+      const q = query(collection(db, "bills"), where("memberId", "==", currentUserId));
+      const snapshot = await getDocs(q);
+      billTable.innerHTML = "";
+
+      if (snapshot.empty) {
+        billTable.innerHTML = "<tr><td colspan='4'>No bills found.</td></tr>";
+        return;
+      }
+
+      snapshot.forEach(doc => {
+        const b = doc.data();
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>₹${b.amount}</td>
+          <td>${b.billingDate || '-'}</td>
+          <td>${b.dueDate}</td>
+          <td>${b.description || '-'}</td>
+        `;
+        billTable.appendChild(row);
+      });
+    }
+
+async function loadNotifications() {
+  notificationsDiv.innerHTML = "<p>Loading...</p>";
+
+  const allNotifications = await getDocs(collection(db, "notifications"));
+  notificationsDiv.innerHTML = "";
+
+  let found = false;
+
+  allNotifications.forEach(docSnap => {
+    const note = docSnap.data();
+
+    // Show if targeted to this member or to all
+    if (note.recipient === "all" || note.recipient === currentUserId) {
+      const div = document.createElement("div");
+      div.className = "highlight";
+      div.textContent = `🔔 ${note.message}`;
+      notificationsDiv.appendChild(div);
+      found = true;
+    }
+  });
+
+  if (!found) {
+    notificationsDiv.innerHTML = "<p>No notifications available.</p>";
+  }
+}
+
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      signOut(auth).then(() => {
+        window.location.href = "../login.html";
+      });
+    });
+
+    async function loadSupplements() {
+  const suppList = document.getElementById('supplementList');
+  suppList.innerHTML = "<p>Loading...</p>";
+
+  const snapshot = await getDocs(collection(db, "supplements"));
+  suppList.innerHTML = "";
+
+  if (snapshot.empty) {
+    suppList.innerHTML = "<p>No supplements available.</p>";
+    return;
+  }
+
+  snapshot.forEach(doc => {
+    const p = doc.data();
+    const card = document.createElement("div");
+    card.className = "supp-card";
+
+    card.innerHTML = `
+      <img src="${p.imageUrl}" alt="${p.name}" />
+      <h4>${p.name}</h4>
+      <p>₹${p.price}</p>
+      <p>Stock: ${p.stock}</p>
+    `;
+
+    suppList.appendChild(card);
+  });
+}
+
+  </script>
+</body>
+</html>

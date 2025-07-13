@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Send Notification - Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .notif-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 550px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #084298;
+    }
+
+    .message {
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="notif-container">
+    <h2>Send Notification</h2>
+
+    <select id="recipient">
+      <option value="all">All Members</option>
+    </select>
+
+    <textarea id="messageText" rows="5" placeholder="Type your message here..." required></textarea>
+
+    <button id="sendBtn">Send Notification</button>
+
+    <p id="feedback" class="message"></p>
+  </div>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection,
+      addDoc,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const sendBtn = document.getElementById('sendBtn');
+    const messageText = document.getElementById('messageText');
+    const recipientSelect = document.getElementById('recipient');
+    const feedback = document.getElementById('feedback');
+
+    // Load members into dropdown
+    async function loadMembers() {
+      const snapshot = await getDocs(collection(db, "members"));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const opt = document.createElement("option");
+        opt.value = docSnap.id;
+        opt.textContent = `${data.name} (${data.email})`;
+        recipientSelect.appendChild(opt);
+      });
+    }
+
+    sendBtn.addEventListener('click', async () => {
+      const message = messageText.value.trim();
+      const recipient = recipientSelect.value;
+
+      if (!message) {
+        feedback.textContent = "Message cannot be empty.";
+        feedback.className = "error message";
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "notifications"), {
+          message,
+          recipient, // "all" or member id
+          sentAt: new Date().toISOString()
+        });
+
+        feedback.textContent = "Notification sent successfully!";
+        feedback.className = "success message";
+        messageText.value = "";
+        recipientSelect.value = "all";
+      } catch (error) {
+        feedback.textContent = "Error sending notification: " + error.message;
+        feedback.className = "error message";
+      }
+    });
+
+    loadMembers();
+  </script>
+</body>
+</html>

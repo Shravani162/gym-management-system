@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Supplement Store - Admin</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f0f0;
+      padding: 40px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .form-section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #084298;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+    }
+
+    .action-btn {
+      padding: 5px 10px;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .edit-btn {
+      background-color: #198754;
+    }
+
+    .delete-btn {
+      background-color: #dc3545;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Manage Supplement Store</h2>
+
+  <div class="form-section">
+    <input type="text" id="productName" placeholder="Product Name" />
+    <input type="number" id="price" placeholder="Price (₹)" />
+    <textarea id="description" rows="3" placeholder="Product Description"></textarea>
+    <button id="addProductBtn">Add Product</button>
+    <p id="msg"></p>
+  </div>
+
+  <table id="productsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price (₹)</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script type="module">
+    import { db } from '../js/firebase.js';
+    import {
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      updateDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const nameInput = document.getElementById('productName');
+    const priceInput = document.getElementById('price');
+    const descInput = document.getElementById('description');
+    const msg = document.getElementById('msg');
+    const productsTable = document.querySelector('#productsTable tbody');
+
+    const loadProducts = async () => {
+      productsTable.innerHTML = '';
+      const snapshot = await getDocs(collection(db, "supplements"));
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const row = document.createElement('tr');
+
+        row.innerHTML = `
+          <td><input value="${data.name}" id="name-${docSnap.id}" /></td>
+          <td><input type="number" value="${data.price}" id="price-${docSnap.id}" /></td>
+          <td><textarea id="desc-${docSnap.id}">${data.description || ''}</textarea></td>
+          <td>
+            <button class="action-btn edit-btn" onclick="editProduct('${docSnap.id}')">Update</button>
+            <button class="action-btn delete-btn" onclick="deleteProduct('${docSnap.id}')">Delete</button>
+          </td>
+        `;
+
+        productsTable.appendChild(row);
+      });
+    };
+
+    document.getElementById('addProductBtn').addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      const price = priceInput.value.trim();
+      const description = descInput.value.trim();
+
+      if (!name || !price) {
+        msg.textContent = "Product name and price are required.";
+        msg.style.color = "red";
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "supplements"), {
+          name,
+          price: Number(price),
+          description
+        });
+
+        msg.textContent = "Product added successfully!";
+        msg.style.color = "green";
+
+        nameInput.value = '';
+        priceInput.value = '';
+        descInput.value = '';
+        loadProducts();
+
+      } catch (error) {
+        msg.textContent = "Error adding product: " + error.message;
+        msg.style.color = "red";
+      }
+    });
+
+    window.editProduct = async (id) => {
+      const name = document.getElementById(`name-${id}`).value;
+      const price = document.getElementById(`price-${id}`).value;
+      const description = document.getElementById(`desc-${id}`).value;
+
+      try {
+        await updateDoc(doc(db, "supplements", id), {
+          name,
+          price: Number(price),
+          description
+        });
+
+        alert("Product updated!");
+        loadProducts();
+      } catch (error) {
+        alert("Update failed: " + error.message);
+      }
+    };
+
+    window.deleteProduct = async (id) => {
+      if (confirm("Delete this product?")) {
+        try {
+          await deleteDoc(doc(db, "supplements", id));
+          loadProducts();
+        } catch (error) {
+          alert("Delete failed: " + error.message);
+        }
+      }
+    };
+
+    loadProducts();
+  </script>
+</body>
+</html>
