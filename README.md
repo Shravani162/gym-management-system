@@ -39,6 +39,12 @@ A web-based gym management system built with **HTML**, **JavaScript**, and **Fir
 - **Admin**: Manages the system (members, billing, diet, supplements).
 - **Member**: Views assigned packages, bills, diet plans, supplements, and receives notifications.
 
+- **To Login**:-
+- As ADMIN: id: admin@gmail.com
+            pass: admin@16
+- As MEMBER: id: user@gmail.com
+             pass: user@16
+  
 ---
 
 ## 🚀 How to Run
